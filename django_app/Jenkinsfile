@@ -1,0 +1,80 @@
+pipeline {
+    agent {
+        docker {
+            image 'python:3.12'
+            registryCredentialsId 'docker-cred'
+            args '--entrypoint="" -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker --group-add 110'
+        }
+    }
+
+    environment {
+        DOCKER_IMAGE = "adilbinanwar/test-django-app"
+        SONAR_URL = "http://YOUR_SONAR_SERVER:9000"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                sh 'echo Repository checked out'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                pip install --upgrade pip
+                pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh '''
+                pytest --cov=. --cov-report=xml
+                '''
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'sonarqube',
+                    variable: 'SONAR_TOKEN')
+                ]) {
+
+                    sh '''
+                    sonar-scanner \
+                    -Dsonar.host.url=$SONAR_URL \
+                    -Dsonar.login=$SONAR_TOKEN
+                    '''
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker-cred',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                    docker build \
+                    -t ${DOCKER_IMAGE}:${BUILD_NUMBER} .
+
+                    docker push \
+                    ${DOCKER_IMAGE}:${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+    }
+}
