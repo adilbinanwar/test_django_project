@@ -76,5 +76,34 @@ pipeline {
                 }
             }
         }
+
+        stage('Update Deployment File') {
+            environment {
+                GIT_REPO_NAME = "test_django_project"
+                GIT_USER_NAME = "adilbinanwar"
+                HOME = "${env.WORKSPACE}"
+            }
+        
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github',
+                    variable: 'GITHUB_TOKEN')
+                ]) {
+        
+                    sh '''
+                    git config --global --add safe.directory ${WORKSPACE}
+                    git config user.email "adil004anwar@gmail.com"
+                    git config user.name "adilbinanwar"
+                    git checkout main
+                    git pull https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} main
+                    sed -i "s|image: adilbinanwar/test-django-app:.*|image: adilbinanwar/test-django-app:${BUILD_NUMBER}|g" django-app-manifests/deployment.yml
+                    git add django-app-manifests/deployment.yml
+                    git commit -m "Update Django image version ${BUILD_NUMBER}" || true
+                    git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+                    '''
+                }
+            }
+        }
+        
     }
 }
