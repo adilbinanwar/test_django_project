@@ -20,6 +20,18 @@ pipeline {
             }
         }
 
+        stage('Debug Workspace') {
+            steps {
+                sh '''
+                pwd
+                echo "===== ROOT ====="
+                ls -la
+                echo "===== ALL FILES ====="
+                find . -type f | sort
+                '''
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 sh '''
