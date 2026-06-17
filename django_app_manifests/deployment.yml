@@ -20,7 +20,7 @@ spec:
       containers:
       - name: django-app
 
-        image: adilbinanwar/test-django-app:21
+        image: adilbinanwar/test-django-app:22
 
         ports:
         - containerPort: 8000
